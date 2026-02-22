@@ -27,6 +27,7 @@ export default function PVDiagram({
     targetPath = null,   // Practice用：背景パス
     showIsotherms = true,
     title = 'PV 線図',
+    initialPMax = 2.5,
 }) {
     const canvasRef = useRef(null);
     const [zoomLevel, setZoomLevel] = React.useState(1.0);
@@ -60,7 +61,7 @@ export default function PVDiagram({
 
     const draw = useCallback(() => {
         const vMax = 0.3 + 1.9 / zoomLevel;
-        const pMax = 4.0 / zoomLevel;
+        const pMax = initialPMax / zoomLevel;
         const vMin = 0.3;
         const pMin = 0;
 
@@ -110,8 +111,11 @@ export default function PVDiagram({
             ctx.stroke();
         }
 
-        // 横グリッド
-        for (let p = -1.0; p <= 6.0; p += 0.5) { // パンに対応して範囲広め
+        // 横グリッド（スケールに合わせてステップを調整）
+        const gridStepY = initialPMax >= 1.0 ? 0.5 : initialPMax / 5;
+        const pStart = -initialPMax;
+        const pLimit = initialPMax * 3;
+        for (let p = pStart; p <= pLimit; p += gridStepY) {
             const y = toPixelY(p);
             ctx.beginPath();
             ctx.moveTo(MARGIN.left, y);
@@ -155,24 +159,131 @@ export default function PVDiagram({
             }
         }
 
+        // --- 矢印描画用ヘルパー ---
+        const drawArrowhead = (x, y, dx, dy, color) => {
+            const angle = Math.atan2(dy, dx);
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-10, -5);
+            ctx.lineTo(-6, 0);
+            ctx.lineTo(-10, 5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        };
+
         // --- 目標パス（Practice用） ---
         if (targetPath && targetPath.length > 1) {
-            ctx.strokeStyle = 'rgba(248, 113, 113, 0.35)';
+            ctx.strokeStyle = 'rgba(248, 113, 113, 0.4)';
             ctx.lineWidth = 3;
-            ctx.setLineDash([6, 4]);
-            ctx.beginPath();
-            ctx.moveTo(toPixelX(targetPath[0].V_rel), toPixelY(targetPath[0].P_rel));
+            ctx.setLineDash([5, 5]);
+
+            // 定積・等温などの「区間」ごとにまとめる
+            const segments = [];
+            let currentSegment = [targetPath[0]];
+            let currentProcess = getProcessType(targetPath[1]?.action);
+
             for (let i = 1; i < targetPath.length; i++) {
-                ctx.lineTo(toPixelX(targetPath[i].V_rel), toPixelY(targetPath[i].P_rel));
+                const pt = targetPath[i];
+                const ptProcess = getProcessType(pt.action);
+
+                // processType が変わった場合（ただし直前の点が今の区間の終点かつ次の区間の始点になる）
+                if (ptProcess !== currentProcess && currentSegment.length > 0) {
+                    segments.push({ type: currentProcess, points: currentSegment });
+                    currentSegment = [targetPath[i - 1], pt];
+                    currentProcess = ptProcess;
+                } else {
+                    currentSegment.push(pt);
+                }
             }
-            ctx.stroke();
+            if (currentSegment.length > 1) {
+                segments.push({ type: currentProcess, points: currentSegment });
+            }
+
+            // 各区間ごとに描画・矢印を追加
+            for (const seg of segments) {
+                const start = seg.points[0];
+                const end = seg.points[seg.points.length - 1];
+
+                ctx.beginPath();
+                let midPt = null;
+                let dx = 0; let dy = 0;
+
+                if (seg.type === 'isothermal') {
+                    const T = start.T_rel;
+                    const vStart = start.V_rel;
+                    const vEnd = end.V_rel;
+                    const steps = Math.max(20, Math.floor(Math.abs(vEnd - vStart) * 50));
+                    const midIndex = Math.floor(steps / 2);
+
+                    for (let s = 0; s <= steps; s++) {
+                        const v = vStart + (vEnd - vStart) * (s / steps);
+                        const p = calcPressure(T, v);
+                        const x = toPixelX(v);
+                        const y = toPixelY(p);
+                        if (s === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+
+                        if (s === midIndex) {
+                            midPt = { x, y };
+                        } else if (s === midIndex + 1) {
+                            dx = x - midPt.x;
+                            dy = y - midPt.y;
+                        }
+                    }
+                } else if (seg.type === 'adiabatic') {
+                    const vStart = start.V_rel;
+                    const vEnd = end.V_rel;
+                    const Tstart = start.T_rel;
+                    const gamma = 5 / 3;
+                    const steps = Math.max(20, Math.floor(Math.abs(vEnd - vStart) * 50));
+                    const midIndex = Math.floor(steps / 2);
+
+                    for (let s = 0; s <= steps; s++) {
+                        const v = vStart + (vEnd - vStart) * (s / steps);
+                        const t = Tstart * Math.pow(vStart / v, gamma - 1);
+                        const p = calcPressure(t, v);
+                        const x = toPixelX(v);
+                        const y = toPixelY(p);
+                        if (s === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+
+                        if (s === midIndex) {
+                            midPt = { x, y };
+                        } else if (s === midIndex + 1) {
+                            dx = x - midPt.x;
+                            dy = y - midPt.y;
+                        }
+                    }
+                } else {
+                    const x1 = toPixelX(start.V_rel);
+                    const y1 = toPixelY(start.P_rel);
+                    const x2 = toPixelX(end.V_rel);
+                    const y2 = toPixelY(end.P_rel);
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    midPt = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+                    dx = x2 - x1;
+                    dy = y2 - y1;
+                }
+                ctx.stroke();
+
+                if (midPt && (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1)) {
+                    drawArrowhead(midPt.x, midPt.y, dx, dy, 'rgba(248, 113, 113, 0.7)');
+                }
+            }
+
             ctx.setLineDash([]);
 
             // 目標パスのノード
             for (let i = 0; i < targetPath.length; i++) {
                 ctx.beginPath();
                 ctx.arc(toPixelX(targetPath[i].V_rel), toPixelY(targetPath[i].P_rel), 4, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(248, 113, 113, 0.3)';
+                ctx.fillStyle = 'rgba(248, 113, 113, 0.4)';
                 ctx.fill();
             }
         }

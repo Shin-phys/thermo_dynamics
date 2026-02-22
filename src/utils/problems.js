@@ -93,7 +93,7 @@ export function generateTargetPath(answerTokens) {
     for (const token of answerTokens) {
         const result = applyAction(state, token);
         state = { V_rel: result.V_rel, T_rel: result.T_rel, P_rel: result.P_rel };
-        path.push({ ...state });
+        path.push({ ...state, action: token });
     }
 
     return path;

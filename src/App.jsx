@@ -216,6 +216,7 @@ export default function App() {
                     targetPath={currentMode === 'practice' && currentProblem ? currentProblem.targetPath : null}
                     showIsotherms={true}
                     title={currentMode === 'practice' ? 'PV 線図（Practice）' : 'PV 線図'}
+                    initialPMax={2.5}
                   />
                 </div>
               </div>
@@ -345,6 +346,7 @@ export default function App() {
                     currentState={{ V_rel: realityModel.V_rel, P_rel: realityModel.P_estimated }}
                     showIsotherms={true}
                     title="PV 線図（衝突から推定・揺れあり）"
+                    initialPMax={0.04}
                   />
                 </div>
               </div>
