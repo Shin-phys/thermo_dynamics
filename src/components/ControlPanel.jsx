@@ -115,10 +115,10 @@ export default function ControlPanel({
                     複合操作（斜辺用）
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
-                    {actionBtn('↗️ 膨張+加熱', () => onAction('expandHeat'), false, 'warn')}
-                    {actionBtn('↘️ 膨張+冷却', () => onAction('expandCool'), false, 'warn')}
-                    {actionBtn('↖️ 圧縮+加熱', () => onAction('compressHeat'), false, 'warn')}
-                    {actionBtn('↙️ 圧縮+冷却', () => onAction('compressCool'), false, 'warn')}
+                    {actionBtn('↗️ 右上', () => onAction('expandHeat'), false, 'warn')}
+                    {actionBtn('↘️ 右下', () => onAction('expandCool'), false, 'warn')}
+                    {actionBtn('↖️ 左上', () => onAction('compressHeat'), false, 'warn')}
+                    {actionBtn('↙️ 左下', () => onAction('compressCool'), false, 'warn')}
                 </div>
             </div>
 

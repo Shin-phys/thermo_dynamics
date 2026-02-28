@@ -346,7 +346,7 @@ export default function App() {
                     currentState={{ V_rel: realityModel.V_rel, P_rel: realityModel.P_estimated }}
                     showIsotherms={true}
                     title="PV 線図（衝突から推定・揺れあり）"
-                    initialPMax={0.1}
+                    initialPMax={0.04}
                   />
                 </div>
               </div>

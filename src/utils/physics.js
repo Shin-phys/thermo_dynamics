@@ -70,10 +70,10 @@ export const ACTION_LABELS = {
     [ACTION_TOKENS.COMPRESS_ISOBARIC]: '定圧圧縮',
     [ACTION_TOKENS.HEAT_ISOBARIC]: '定圧加熱',
     [ACTION_TOKENS.COOL_ISOBARIC]: '定圧冷却',
-    [ACTION_TOKENS.EXPAND_HEAT]: '膨張+加熱',
-    [ACTION_TOKENS.EXPAND_COOL]: '膨張+冷却',
-    [ACTION_TOKENS.COMPRESS_HEAT]: '圧縮+加熱',
-    [ACTION_TOKENS.COMPRESS_COOL]: '圧縮+冷却',
+    [ACTION_TOKENS.EXPAND_HEAT]: '右上',
+    [ACTION_TOKENS.EXPAND_COOL]: '右下',
+    [ACTION_TOKENS.COMPRESS_HEAT]: '左上',
+    [ACTION_TOKENS.COMPRESS_COOL]: '左下',
 };
 
 // --- 初期状態（標準状態：相対値） ---

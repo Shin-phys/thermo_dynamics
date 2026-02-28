@@ -77,8 +77,18 @@ export function CurrentStateDisplay({ gasState, mode = 'textbook' }) {
 export function RecentActionDisplay({ lastResult }) {
     return (
         <div className="bg-surface-800/60 rounded-xl p-3 border border-slate-700/30 backdrop-blur-sm h-full flex flex-col justify-center">
-            <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5 font-medium">
-                直近の操作
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5 font-medium flex items-center justify-between">
+                <span>直近の操作</span>
+                {lastResult && lastResult.Qin > 0.001 && (
+                    <span className="animate-pulse font-bold text-orange-400 bg-orange-400/10 px-1.5 py-0.5 rounded shadow-[0_0_8px_rgba(251,146,60,0.4)]">
+                        🔥 吸熱 Q {'>'} 0
+                    </span>
+                )}
+                {lastResult && lastResult.Qin < -0.001 && (
+                    <span className="animate-pulse font-bold text-cyan-400 bg-cyan-400/10 px-1.5 py-0.5 rounded shadow-[0_0_8px_rgba(34,211,238,0.4)]">
+                        ❄️ 放熱 Q {'<'} 0
+                    </span>
+                )}
             </div>
             <div className="space-y-1">
                 {thermoCard('ΔU', lastResult.deltaU,
