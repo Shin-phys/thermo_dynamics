@@ -32,20 +32,20 @@ const PROBLEM_DEFINITIONS = [
     },
     {
         id: 3,
-        name: '三角形サイクル（斜辺あり）',
-        description: '定積加熱 → 膨張+冷却（斜辺） → 元に戻す三角形。複合操作を使う。',
+        name: '直角三角形サイクル',
+        description: '定積加熱 → 右下（斜辺） → 定圧圧縮で元に戻す定番のサイクル。',
         answerTokens: [
             AT.HEAT_FIXED, AT.HEAT_FIXED, AT.HEAT_FIXED,
             AT.EXPAND_COOL, AT.EXPAND_COOL, AT.EXPAND_COOL,
-            AT.COMPRESS_ISOTHERMAL, AT.COMPRESS_ISOTHERMAL, AT.COMPRESS_ISOTHERMAL,
+            AT.COMPRESS_ISOBARIC, AT.COMPRESS_ISOBARIC, AT.COMPRESS_ISOBARIC,
         ],
     },
     {
         id: 4,
-        name: '逆三角形サイクル',
-        description: '等温膨張 → 定積加熱 → 圧縮+冷却（斜辺）で戻る逆三角形。',
+        name: '逆・直角三角形サイクル',
+        description: '定圧膨張 → 定積加熱 → 左下（斜辺）で元に戻す逆三角形。',
         answerTokens: [
-            AT.EXPAND_ISOTHERMAL, AT.EXPAND_ISOTHERMAL, AT.EXPAND_ISOTHERMAL,
+            AT.EXPAND_ISOBARIC, AT.EXPAND_ISOBARIC, AT.EXPAND_ISOBARIC,
             AT.HEAT_FIXED, AT.HEAT_FIXED, AT.HEAT_FIXED,
             AT.COMPRESS_COOL, AT.COMPRESS_COOL, AT.COMPRESS_COOL,
         ],

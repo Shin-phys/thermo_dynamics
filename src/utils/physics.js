@@ -205,42 +205,42 @@ export function applyAction(state, action) {
             Qin = deltaU - Win;
             break;
 
-        // --- E) 複合操作：膨張+加熱 ---
+        // --- E) 複合操作：右上（膨張+加熱） ---
         case ACTION_TOKENS.EXPAND_HEAT:
             V_new = Math.min(V_MAX, V_rel + DELTA_V);
-            T_new = T_rel + DELTA_T;
-            P_new = calcPressure(T_new, V_new);
+            P_new = P_rel + 0.1;
+            T_new = P_new * V_new / C_CONST;
             deltaU = calcDeltaU(T_rel, T_new);
             // 複合操作の仕事：台形近似
             Win = -((P_rel + P_new) / 2) * (V_new - V_rel);
             Qin = deltaU - Win;
             break;
 
-        // --- E) 複合操作：膨張+冷却 ---
+        // --- E) 複合操作：右下（膨張+冷却） ---
         case ACTION_TOKENS.EXPAND_COOL:
             V_new = Math.min(V_MAX, V_rel + DELTA_V);
-            T_new = Math.max(T_MIN, T_rel - DELTA_T);
-            P_new = calcPressure(T_new, V_new);
+            P_new = Math.max(0.1, P_rel - 0.1);
+            T_new = P_new * V_new / C_CONST;
             deltaU = calcDeltaU(T_rel, T_new);
             Win = -((P_rel + P_new) / 2) * (V_new - V_rel);
             Qin = deltaU - Win;
             break;
 
-        // --- E) 複合操作：圧縮+加熱 ---
+        // --- E) 複合操作：左上（圧縮+加熱） ---
         case ACTION_TOKENS.COMPRESS_HEAT:
             V_new = Math.max(V_MIN, V_rel - DELTA_V);
-            T_new = T_rel + DELTA_T;
-            P_new = calcPressure(T_new, V_new);
+            P_new = P_rel + 0.1;
+            T_new = P_new * V_new / C_CONST;
             deltaU = calcDeltaU(T_rel, T_new);
             Win = -((P_rel + P_new) / 2) * (V_new - V_rel);
             Qin = deltaU - Win;
             break;
 
-        // --- E) 複合操作：圧縮+冷却 ---
+        // --- E) 複合操作：左下（圧縮+冷却） ---
         case ACTION_TOKENS.COMPRESS_COOL:
             V_new = Math.max(V_MIN, V_rel - DELTA_V);
-            T_new = Math.max(T_MIN, T_rel - DELTA_T);
-            P_new = calcPressure(T_new, V_new);
+            P_new = Math.max(0.1, P_rel - 0.1);
+            T_new = P_new * V_new / C_CONST;
             deltaU = calcDeltaU(T_rel, T_new);
             Win = -((P_rel + P_new) / 2) * (V_new - V_rel);
             Qin = deltaU - Win;
