@@ -7,7 +7,7 @@
 //  - 粒子モデルの測定点
 // ====================================================
 import { useEffect, useState } from 'react';
-import { useCanvas, drawArrow } from '../hooks/useCanvas.js';
+import { useCanvas, drawArrow, useIsWide } from '../hooks/useCanvas.js';
 import { FAMILIES, GAMMA, J_PER_UNIT, T0_K, sampleSegment, sameState } from '../physics/model.js';
 
 const M = { l: 54, r: 16, t: 14, b: 46 };
@@ -35,13 +35,15 @@ export default function PVDiagram({
   points = null,         // 粒子モデルの測定点 [{V,P}]
   isoScale = 1,          // 等温線の圧力倍率（粒子モデルで分子数に比例）
   showArea = true,
-  title = null,
+  title = 'PV図',
   guidesDefault = true,
 }) {
   const [guides, setGuides] = useState(guidesDefault);
   const [zoom, setZoom] = useState(false);
-  const { wrapRef, canvasRef, width, height, getCtx } = useCanvas(
-    (w) => Math.min(460, Math.max(250, w * 0.7)), 760,
+  const wide = useIsWide();
+  const [showHelp, setShowHelp] = useState(false);
+  const { wrapRef, canvasRef, width, height, getCtx, wrapClass, canvasClass } = useCanvas(
+    (w) => Math.min(460, Math.max(250, w * 0.7)), 760, {},
   );
 
   const closed = !!(start && current && trace.length >= 2 && sameState(start, current));
@@ -319,44 +321,46 @@ export default function PVDiagram({
   }, [width, height, getCtx, trace, start, current, target, points, isoScale, guides, showArea, closed, zoom]);
 
   const families = new Set(trace.map((s) => s.family));
+  const help = points
+    ? '点はピストンが受けた力積から測った圧力（新しい点ほど濃い）。点線は理想気体の等温線（分子数に比例してずれる）。'
+    : '色つきの面積は直近の工程の仕事の大きさ（紫：気体が外へした仕事、緑：外からされた仕事）。元の状態に戻ると、サイクルが囲む面積（正味の仕事）を黄色で表示します。'
+      + (zoom ? '拡大中は横軸が 0 から始まらないため、工程の下の面積は表示しません。' : '');
 
   return (
-    <div>
-      {title && <h3 className="text-sm font-semibold text-slate-200 mb-2">{title}</h3>}
-      <div ref={wrapRef} className="w-full">
-        <canvas ref={canvasRef} className="rounded-lg" aria-label="PV図" />
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-1.5">
+        <h2 className={`font-bold text-slate-100 mr-auto ${wide ? 'text-base' : 'text-sm'}`}>
+          {title}
+          <button type="button" onClick={() => setShowHelp((v) => !v)} aria-expanded={showHelp}
+            className="ml-1.5 text-sm font-normal text-slate-400 hover:text-slate-200" title={help}>ⓘ</button>
+        </h2>
+        {!points && (
+          <label className="flex items-center gap-1.5 cursor-pointer select-none text-sm text-slate-300">
+            <input type="checkbox" checked={guides} onChange={(e) => setGuides(e.target.checked)} className="accent-sky-500 w-4 h-4" />
+            {wide ? '等温線・断熱線' : '等温・断熱線'}
+          </label>
+        )}
+        <label className="flex items-center gap-1.5 cursor-pointer select-none text-sm text-slate-300">
+          <input type="checkbox" checked={zoom} onChange={(e) => setZoom(e.target.checked)} className="accent-sky-500 w-4 h-4" />
+          拡大
+        </label>
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-300">
+      {showHelp && <p className="mb-1.5 text-xs text-slate-300 leading-relaxed">{help}</p>}
+      <div ref={wrapRef} className={wrapClass}>
+        <canvas ref={canvasRef} className={`rounded-lg ${canvasClass}`} aria-label="PV図" />
+      </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-300">
         {!points && Object.entries(FAMILIES).map(([k, f]) => (
           <span key={k} className={`flex items-center gap-1 ${families.has(k) ? '' : 'opacity-50'}`}>
-            <span className="inline-block w-4 h-1 rounded" style={{ background: f.color }} />{f.name}
+            <span className="inline-block w-4 h-1 rounded" style={{ background: f.color }} />{wide || k !== 'line' ? f.name : '直線'}
           </span>
         ))}
         {target && (
           <span className="flex items-center gap-1">
-            <span className="inline-block w-4 border-t-2 border-dashed border-slate-200" />目標の経路
+            <span className="inline-block w-4 border-t-2 border-dashed border-slate-200" />目標
           </span>
         )}
       </div>
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-300">
-        {!points && (
-          <label className="flex items-center gap-1.5 cursor-pointer select-none">
-            <input type="checkbox" checked={guides} onChange={(e) => setGuides(e.target.checked)} className="accent-sky-500 w-4 h-4" />
-            現在の点を通る等温線・断熱線
-          </label>
-        )}
-        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-          <input type="checkbox" checked={zoom} onChange={(e) => setZoom(e.target.checked)} className="accent-sky-500 w-4 h-4" />
-          軌跡のまわりを拡大
-        </label>
-      </div>
-      {!points && (
-        <p className="mt-1 text-xs text-slate-400 leading-relaxed">
-          色つきの面積は直近の工程の仕事の大きさ（紫：気体が外へした仕事、緑：外からされた仕事）。
-          元の状態に戻ると、サイクルが囲む面積（正味の仕事）を黄色で表示します。
-          {zoom && ' 拡大中は横軸が 0 から始まらないため、工程の下の面積は表示しません。'}
-        </p>
-      )}
     </div>
   );
 }

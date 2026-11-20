@@ -73,7 +73,8 @@ export class ParticleSim {
       });
     }
     this.Pmeas = (N * KE0) / (SIM_W * this.H);
-    this.Pext = this.Pmeas;
+    // 自由ピストンのときは、制御に使う圧力（kineticForce）とつり合う外圧にしておく
+    this.Pext = this.kineticForce();
     this.resetRecord();
   }
 
