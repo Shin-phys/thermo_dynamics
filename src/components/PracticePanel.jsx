@@ -1,233 +1,116 @@
 // ====================================================
-// PracticePanel: Practiceモード専用パネル
-// 問題選択・出題・採点・操作ログ表示
+// 練習問題パネル: 問題選択・ヒント・答え・工程ごとの採点
 // ====================================================
+import { useMemo, useState } from 'react';
+import { FAMILIES, OPERATIONS, PROCESS_INFO, describeSetup } from '../physics/model.js';
+import { gradeAttempt } from '../physics/problems.js';
 
-import React, { useState, useCallback, useMemo } from 'react';
-import { getProblems, getRandomProblem, gradeOperationSequence, compressTokens } from '../utils/problems';
-import { ACTION_LABELS } from '../utils/physics';
+const letter = (i) => String.fromCharCode(65 + i);
 
-export default function PracticePanel({
-    actionLog,
-    currentGasState,
-    onSelectProblem,
-    currentProblem,
-    onReset,
-}) {
-    const [gradeResult, setGradeResult] = useState(null);
-    const [showAnswer, setShowAnswer] = useState(false);
-    const [showHint, setShowHint] = useState(false);
-    const problems = getProblems();
+const STATUS = {
+  ok: { icon: '✅', text: '一致' },
+  short: { icon: '🔸', text: '操作は合っています。回数が足りません' },
+  over: { icon: '🔸', text: '操作は合っています。行き過ぎています（「1つ戻す」で戻れます）' },
+  wrong: { icon: '❌', text: '操作（装置の準備）が違います' },
+  missing: { icon: '⬜', text: 'まだ' },
+};
 
-    // --- 問題選択 ---
-    const handleSelectProblem = useCallback((prob) => {
-        setGradeResult(null);
-        setShowAnswer(false);
-        setShowHint(false);
-        onSelectProblem(prob);
-    }, [onSelectProblem]);
+function howTo(processId) {
+  const info = PROCESS_INFO[processId];
+  if (info.family === 'line') return `PV図の上をまっすぐ動かす ${info.arrow}`;
+  return `${describeSetup(info.setup)} で「${OPERATIONS[info.op].label}」`;
+}
 
-    // --- ランダム出題 ---
-    const handleRandomProblem = useCallback(() => {
-        const prob = getRandomProblem();
-        setGradeResult(null);
-        setShowAnswer(false);
-        setShowHint(false);
-        onSelectProblem(prob);
-    }, [onSelectProblem]);
+export default function PracticePanel({ problems, problem, onSelect, steps }) {
+  const [view, setView] = useState({ id: null, hint: false, answer: false, checked: false });
+  // 問題が変わったら表示状態をリセット
+  const v = view.id === problem?.id ? view : { id: problem?.id, hint: false, answer: false, checked: false };
+  const set = (patch) => setView({ ...v, ...patch });
 
-    // --- 採点 ---
-    const handleGrade = useCallback(() => {
-        if (!currentProblem) return;
-        const answerFinalState = currentProblem.targetPath[currentProblem.targetPath.length - 1];
-        const result = gradeOperationSequence(actionLog, currentProblem.answerTokens, currentGasState, answerFinalState);
-        setGradeResult(result);
-    }, [actionLog, currentProblem, currentGasState]);
+  const grade = useMemo(() => (problem ? gradeAttempt(steps, problem) : null), [steps, problem]);
+  const segs = problem?.segments ?? [];
+  const nVert = problem ? (problem.closed ? segs.length : segs.length + 1) : 0;
 
-    // --- リセット ---
-    const handleReset = useCallback(() => {
-        setGradeResult(null);
-        setShowAnswer(false);
-        setShowHint(false);
-        onReset();
-    }, [onReset]);
+  return (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="text-xs text-slate-400">問題を選ぶ</span>
+        <select
+          value={problem?.id ?? ''}
+          onChange={(e) => onSelect(problems.find((p) => p.id === Number(e.target.value)))}
+          className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-800 px-2 py-2 text-sm text-slate-100"
+        >
+          {problems.map((p) => <option key={p.id} value={p.id}>#{p.id} {p.name}</option>)}
+        </select>
+      </label>
 
-    // 圧縮されたログ（UI表示用）
-    const compressedLog = useMemo(() => compressTokens(actionLog), [actionLog]);
-    const compressedAnswer = useMemo(() => currentProblem ? compressTokens(currentProblem.answerTokens) : [], [currentProblem]);
+      {problem && (
+        <>
+          <p className="text-sm text-slate-200 leading-relaxed">
+            PV図の白い点線の経路（{Array.from({ length: nVert }, (_, i) => letter(i)).join(' → ')}
+            {problem.closed ? ' → A' : ''}）を、装置の準備と操作で再現しよう。
+            スタートは点 A（緑の丸）です。
+          </p>
 
-    return (
-        <div className="space-y-3">
-            {/* --- 問題選択 --- */}
-            <div>
-                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5 font-medium">
-                    📝 問題選択
-                </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => set({ checked: true })}
+              className="rounded-lg bg-emerald-600/80 hover:bg-emerald-500 px-3 py-2 text-sm font-semibold text-white">
+              ✔ 採点する
+            </button>
+            <button type="button" onClick={() => set({ hint: !v.hint })}
+              className="rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm text-slate-200">
+              💡 {v.hint ? 'ヒントを隠す' : 'ヒント'}
+            </button>
+            <button type="button" onClick={() => set({ answer: !v.answer })}
+              className="rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 px-3 py-2 text-sm text-slate-200">
+              👁 {v.answer ? '答えを隠す' : '答え'}
+            </button>
+          </div>
 
-                {/* ランダム出題ボタン */}
-                <button
-                    onClick={handleRandomProblem}
-                    className="w-full mb-2 px-3 py-2 rounded-lg text-xs font-medium
-            bg-gradient-to-r from-purple-600/50 to-blue-600/50
-            text-white border border-purple-400/30
-            hover:from-purple-500/60 hover:to-blue-500/60
-            active:scale-95 transition-all duration-200"
-                >
-                    🎲 ランダム出題
-                </button>
-
-                {/* 問題リスト */}
-                <div className="max-h-36 overflow-y-auto space-y-1 scrollbar-thin">
-                    {problems.map(prob => (
-                        <button
-                            key={prob.id}
-                            onClick={() => handleSelectProblem(prob)}
-                            className={`w-full text-left px-2.5 py-1.5 rounded-md text-[11px] transition-all duration-150
-                ${currentProblem?.id === prob.id
-                                    ? 'bg-blue-900/40 text-blue-300 border border-blue-500/40'
-                                    : 'bg-surface-700/40 text-slate-400 border border-transparent hover:bg-surface-600/50 hover:text-slate-300'
-                                }`}
-                        >
-                            <span className="font-medium">#{prob.id}</span> {prob.name}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* --- 選択中の問題情報 --- */}
-            {currentProblem && (
-                <div className="bg-surface-700/30 rounded-lg p-2.5 border border-slate-600/20">
-                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1 font-medium">
-                        出題中
+          {(v.checked || v.hint || v.answer) && (
+            <ol className="space-y-1.5">
+              {segs.map((s, i) => {
+                const info = PROCESS_INFO[s.processId];
+                const row = grade.rows[i];
+                const to = problem.closed && i === segs.length - 1 ? 'A' : letter(i + 1);
+                return (
+                  <li key={i} className="rounded-lg bg-slate-800/60 border border-slate-700/60 px-2 py-1.5 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-slate-300">{letter(i)}→{to}</span>
+                      {v.hint && (
+                        <span style={{ color: FAMILIES[info.family].color }}>{FAMILIES[info.family].name}</span>
+                      )}
+                      {v.checked && <span className="ml-auto">{STATUS[row.status].icon}</span>}
                     </div>
-                    <div className="text-xs text-slate-300 font-medium">
-                        #{currentProblem.id} {currentProblem.name}
-                    </div>
-                    <div className="text-[10px] text-slate-500 mt-1.5">
-                        {!showHint ? (
-                            <button
-                                onClick={() => setShowHint(true)}
-                                className="text-blue-400 hover:text-blue-300 hover:underline transition-colors flex items-center gap-1"
-                            >
-                                💡 ヒントを見る
-                            </button>
-                        ) : (
-                            <div className="animate-in fade-in duration-300 text-slate-400">
-                                {currentProblem.description}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* --- 操作ログ --- */}
-            <div>
-                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5 font-medium">
-                    操作工程（全{compressedLog.length}工程 / クリック{actionLog.length}回）
-                </div>
-                <div className="max-h-24 overflow-y-auto bg-surface-800/50 rounded-md p-1.5 space-y-0.5 scrollbar-thin">
-                    {compressedLog.length === 0 ? (
-                        <div className="text-[10px] text-slate-600 text-center py-2">
-                            操作を開始してください
-                        </div>
-                    ) : (
-                        compressedLog.map((item, i) => (
-                            <div key={i} className="flex items-center gap-1.5 text-[10px]">
-                                <span className="text-slate-600 font-mono w-5 text-right">{i + 1}.</span>
-                                <span className="text-slate-400">
-                                    {ACTION_LABELS[item.token] || item.token}
-                                    <span className="text-slate-500 ml-1">×{item.count}</span>
-                                </span>
-                            </div>
-                        ))
+                    {v.answer && (
+                      <div className="text-xs text-slate-300 mt-0.5">{howTo(s.processId)} × {s.count} 回</div>
                     )}
-                </div>
-            </div>
-
-            {/* --- 採点ボタン --- */}
-            {currentProblem && (
-                <div className="space-y-1.5">
-                    <button
-                        onClick={handleGrade}
-                        className="w-full px-3 py-2.5 rounded-lg text-sm font-medium
-              bg-gradient-to-r from-emerald-600/60 to-teal-600/60
-              text-white border border-emerald-400/30
-              hover:from-emerald-500/70 hover:to-teal-500/70
-              active:scale-95 transition-all duration-200 shadow-lg shadow-emerald-900/20"
-                    >
-                        ✅ 採点する
-                    </button>
-
-                    <div className="flex gap-1.5">
-                        <button
-                            onClick={handleReset}
-                            className="flex-1 px-3 py-1.5 rounded-md text-[11px] font-medium
-                bg-surface-700/60 text-slate-400 border border-slate-600
-                hover:bg-surface-600/60 hover:text-slate-300
-                transition-all duration-150"
-                        >
-                            🔄 やり直し
-                        </button>
-                        <button
-                            onClick={() => setShowAnswer(!showAnswer)}
-                            className="flex-1 px-3 py-1.5 rounded-md text-[11px] font-medium
-                bg-surface-700/60 text-slate-400 border border-slate-600
-                hover:bg-surface-600/60 hover:text-slate-300
-                transition-all duration-150"
-                        >
-                            {showAnswer ? '🙈 隠す' : '👁️ 正解表示'}
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* --- 採点結果 --- */}
-            {gradeResult && (
-                <div className={`rounded-lg p-3 border ${gradeResult.correct
-                    ? 'bg-emerald-900/30 border-emerald-500/30'
-                    : 'bg-amber-900/20 border-amber-500/30'
-                    }`}>
-                    <div className={`text-sm font-medium ${gradeResult.correct ? 'text-emerald-300' : 'text-amber-300'
-                        }`}>
-                        {gradeResult.message}
-                    </div>
-                    {!gradeResult.correct && (
-                        <div className="text-[10px] text-slate-500 mt-1 space-y-0.5">
-                            <div>工程列照合: {gradeResult.isSequenceMatch ? '✅ 一致' : '❌ 不一致'}</div>
-                            <div>操作回数照合: {gradeResult.isCountMatch ? '✅ 一致' : '❌ 不一致'}</div>
-                            <div>最終状態照合: {gradeResult.isStateMatch ? '✅ 一致' : '❌ 不一致'}</div>
-                            <div className="pt-1 text-slate-600">
-                                記録工程数: {gradeResult.detail.userCount} / 目標: {gradeResult.detail.answerCount}
-                            </div>
-                        </div>
+                    {v.checked && row.status !== 'ok' && row.status !== 'missing' && (
+                      <div className="text-xs text-amber-200 mt-0.5">
+                        {STATUS[row.status].text}
+                        {(row.status === 'short' || row.status === 'over') && `（${row.user.count} / ${s.count} 回）`}
+                      </div>
                     )}
-                </div>
-            )}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
 
-            {/* --- 正解表示 --- */}
-            {showAnswer && currentProblem && (
-                <div className="bg-surface-800/60 rounded-lg p-2.5 border border-slate-600/20">
-                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1 font-medium">
-                        正解工程
-                    </div>
-                    <div className="space-y-0.5">
-                        {compressedAnswer.map((item, i) => (
-                            <div key={i} className="flex items-center gap-1.5 text-[10px]">
-                                <span className="text-slate-600 font-mono w-5 text-right">{i + 1}.</span>
-                                <span className={`${i < compressedLog.length && compressedLog[i].token === item.token
-                                    ? (compressedLog[i].count === item.count ? 'text-emerald-400' : 'text-amber-400')
-                                    : i < compressedLog.length
-                                        ? 'text-red-400'
-                                        : 'text-slate-400'
-                                    }`}>
-                                    {ACTION_LABELS[item.token] || item.token}
-                                    <span className="opacity-70 ml-1">×{item.count}</span>
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
+          {v.checked && grade.extra > 0 && (
+            <div className="text-sm text-amber-200">目標より工程が {grade.extra} つ多くなっています。</div>
+          )}
+          {v.checked && grade.correct && (
+            <div className="rounded-xl border border-emerald-400/50 bg-emerald-900/30 p-3 text-emerald-100 font-semibold">
+              🎉 正解！ すべての工程が一致しました。
+              {problem.closed && ' 下のエネルギー収支でサイクル全体の熱と仕事も確かめよう。'}
+            </div>
+          )}
+          {v.checked && !grade.correct && (
+            <p className="text-xs text-slate-400">採点結果は操作に合わせて更新されます。</p>
+          )}
+        </>
+      )}
+    </div>
+  );
 }

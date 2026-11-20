@@ -1,16 +1,42 @@
-# React + Vite
+# 熱力学第一法則シミュレーター
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+高校物理「気体の状態変化と熱力学第一法則（ΔU = Q + W）」の学習用 Web アプリです。
 
-Currently, two official plugins are available:
+## 使い方の考え方
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+「温度＋」「体積＋」のような**結果**ではなく、**装置の準備と操作**で気体を変化させます。
 
-## React Compiler
+| ピストン ＼ 容器のまわり | 断熱材（ヒーター付き） | 恒温槽 |
+|---|---|---|
+| 固定 | 加熱・冷却 → 定積変化 | （操作できない） |
+| 手で動かす | 押し込む・引き出す → 断熱変化 | 押し込む・引き出す → 等温変化 |
+| 自由に動く（外圧一定） | 加熱・冷却 → 定圧変化 | （操作できない） |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+できない組み合わせでは、ボタンの下に理由を表示します。
 
-## Expanding the ESLint configuration
+## モード
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- **教科書モデル**：単原子分子の理想気体（0.0401 mol、基準 1.0×10⁵ Pa・1.0 L・300 K）。
+  1回の操作で PV 図の方眼 1 目盛り（0.1）ずつ変化し、Q・W・W′・ΔU を J で表示します。
+  PV 図では直近の工程の仕事を面積で、閉じたサイクルでは正味の仕事（囲まれた面積）と熱効率を表示します。
+- **練習問題**：PV 図の点線の経路を装置の操作で再現します。工程ごとに採点します。
+  サイクルの問題はすべて元の状態に戻ることを `npm run verify` で確認できます。
+- **粒子モデル**：2 次元の分子動力学。分子どうしの衝突、動くピストン、熱壁（ヒーター・恒温槽）を計算し、
+  圧力を力積から、温度を平均運動エネルギーから測ります。Q・W を分子 1 個ずつ集計するため ΔU = Q + W が常に成り立ちます。
+
+## 開発
+
+```bash
+npm install
+npm run dev      # 開発サーバー
+npm run build    # dist/ に出力（GitHub Pages へは main への push で自動デプロイ）
+npm run lint
+npm run verify   # 練習問題の検証
+```
+
+主なファイル
+
+- `src/physics/model.js` … 理想気体の過程計算、装置設定→過程の対応
+- `src/physics/problems.js` … 練習問題と採点
+- `src/physics/particleSim.js` … 粒子モデル
+- `src/components/` … 装置図・PV 図・速度分布・操作パネルなど
