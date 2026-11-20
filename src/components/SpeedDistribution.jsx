@@ -11,12 +11,12 @@ import { HIST_UMAX } from '../physics/particleSim.js';
 
 const M = { l: 44, r: 12, t: 12, b: 40 };
 
-export default function SpeedDistribution({ T = 1, hist = null }) {
+export default function SpeedDistribution({ T = 1, hist = null, compact = false }) {
   const particle = !!hist;
   const uMax = particle ? HIST_UMAX : 3.2;
   const yMax = particle ? 1.0 : 1.3;
   const { wrapRef, canvasRef, width, height, getCtx } = useCanvas(
-    (w) => Math.min(300, Math.max(180, w * 0.5)), 760,
+    (w) => (compact ? Math.min(200, Math.max(150, w * 0.45)) : Math.min(300, Math.max(180, w * 0.5))), 760,
   );
 
   useEffect(() => {
@@ -127,7 +127,7 @@ export default function SpeedDistribution({ T = 1, hist = null }) {
       </div>
       <p className="mt-1 text-xs text-slate-400 leading-relaxed">
         {particle
-          ? '最初は全分子が同じ速さで出発します。分子どうしの衝突をくり返すと、分布が理論曲線に近づいていきます。'
+          ? '最初は全分子が同じ速さ。衝突をくり返すと理論曲線に近づきます。'
           : '温度が上がると、分布は速いほうへ移り、山は低く広がります（面積＝分子の数は一定）。'}
       </p>
     </div>

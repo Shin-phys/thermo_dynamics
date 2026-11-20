@@ -1,19 +1,67 @@
 // ====================================================
 // 状態量・エネルギー収支の表示（理想モデル）
 // ====================================================
+import { useState } from 'react';
 import { FAMILIES, J_PER_UNIT, N_MOL, PROCESS_INFO, T0_K } from '../physics/model.js';
 
 export function Card({ title, children, className = '', right = null }) {
   return (
-    <section className={`rounded-2xl border border-slate-700/60 bg-slate-900/70 p-4 ${className}`}>
+    <section className={`rounded-2xl border border-slate-700/60 bg-slate-900/70 p-3 ${className}`}>
       {title && (
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2">
           <h2 className="text-base font-bold text-slate-100">{title}</h2>
           {right}
         </div>
       )}
       {children}
     </section>
+  );
+}
+
+/** 右側パネルのタブ */
+export function Tabs({ tabs, initial }) {
+  const [active, setActive] = useState(initial ?? tabs[0].id);
+  const cur = tabs.find((t) => t.id === active) ?? tabs[0];
+  return (
+    <div className="flex flex-col min-h-0 h-full">
+      <div className="flex gap-1 border-b border-slate-700/70 mb-3" role="tablist">
+        {tabs.map((t) => (
+          <button key={t.id} type="button" role="tab" aria-selected={t.id === cur.id}
+            onClick={() => setActive(t.id)}
+            className={`px-3 py-1.5 text-sm rounded-t-lg -mb-px border whitespace-nowrap
+              ${t.id === cur.id
+                ? 'border-slate-600 border-b-slate-900 bg-slate-900 text-slate-100 font-semibold'
+                : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4" role="tabpanel">{cur.content}</div>
+    </div>
+  );
+}
+
+/** 操作バーに出す直近の結果（1行） */
+export function LastStrip({ step }) {
+  if (!step) return <span className="text-xs text-slate-500">操作すると、ここに Q・W・ΔU が出ます</span>;
+  const info = PROCESS_INFO[step.processId];
+  const fam = FAMILIES[info.family];
+  const item = (label, v, color) => (
+    <span className="whitespace-nowrap">
+      <span className="text-slate-400">{label}</span> <span className={`font-mono tabular-nums ${color}`}>{fmtJ(v)}</span>
+    </span>
+  );
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm">
+      <span className="flex items-center gap-1.5 font-semibold text-slate-100 whitespace-nowrap">
+        <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: fam.color }} />{info.name}
+      </span>
+      {item('Q', step.Q, step.Q >= 0 ? 'text-orange-300' : 'text-sky-300')}
+      {item('W', step.W, 'text-emerald-300')}
+      {item('W′', -step.W, 'text-violet-300')}
+      {item('ΔU', step.dU, 'text-yellow-300')}
+      <span className="text-xs text-slate-500">〔J〕</span>
+    </div>
   );
 }
 

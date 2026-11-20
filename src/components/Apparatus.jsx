@@ -6,7 +6,7 @@
 import { useEffect, useRef } from 'react';
 import { useCanvas, drawArrow, tempColor } from '../hooks/useCanvas.js';
 import { J_PER_UNIT, T0_K, familyOf, PROCESS_INFO } from '../physics/model.js';
-import { SIM_W, H_PER_V, KE0 } from '../physics/particleSim.js';
+import { SIM_W, H_PER_V, KE0, ParticleSim } from '../physics/particleSim.js';
 
 const LW = 300;
 const LH = 420;
@@ -37,7 +37,9 @@ function fmtJ(x) {
 }
 
 export default function Apparatus({ V = 1, T = 1, piston, env, event = null, sim = null }) {
-  const { wrapRef, canvasRef, width, getCtx } = useCanvas((w) => (w * LH) / LW, 340);
+  const { wrapRef, canvasRef, width, getCtx, wrapClass, canvasClass } = useCanvas(
+    (w) => (w * LH) / LW, 340, { aspect: LW / LH },
+  );
   const propsRef = useRef({});
   const eventRef = useRef(null);
   const particlesRef = useRef(null);
@@ -267,6 +269,9 @@ export default function Apparatus({ V = 1, T = 1, piston, env, event = null, sim
       ctx.fillText(`V = ${Vd.toFixed(2)} L`, 8, 18);
       ctx.fillStyle = tempColor(Tnow, 1);
       ctx.fillText(`T = ${Math.round(Tnow * T0_K)} K`, 8, 36);
+      const Pnow = s ? ParticleSim.toPrel(s.Pmeas) : (pr.T / pr.V);
+      ctx.fillStyle = '#fda4af';
+      ctx.fillText(`P = ${Pnow.toFixed(2)}×10⁵ Pa`, 8, 54);
 
       // --- Q・W の矢印（理想モデル、操作直後） ---
       if (evOn) {
@@ -314,8 +319,8 @@ export default function Apparatus({ V = 1, T = 1, piston, env, event = null, sim
   }, [width, getCtx]);
 
   return (
-    <div ref={wrapRef} className="w-full flex justify-center">
-      <canvas ref={canvasRef} aria-label="シリンダーとピストンの装置図" />
+    <div ref={wrapRef} className={wrapClass}>
+      <canvas ref={canvasRef} className={canvasClass} aria-label="シリンダーとピストンの装置図" />
     </div>
   );
 }

@@ -1,33 +1,72 @@
 // ====================================================
-// 親要素の幅に合わせ、高解像度（devicePixelRatio）で描く Canvas
+// 親要素に合わせ、高解像度（devicePixelRatio）で描く Canvas
+//  - 通常：親の幅に合わせ、高さは heightOf(幅) で決める
+//  - fit 指定 + 横幅 1024px 以上：親要素の箱（幅・高さ）に収まるように描く
 // ====================================================
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+const WIDE_QUERY = '(min-width: 1024px)';
+
+/** PC 向けの1画面レイアウトかどうか */
+export function useIsWide() {
+  const [wide, setWide] = useState(() => window.matchMedia(WIDE_QUERY).matches);
+  useEffect(() => {
+    const m = window.matchMedia(WIDE_QUERY);
+    const f = () => setWide(m.matches);
+    m.addEventListener('change', f);
+    return () => m.removeEventListener('change', f);
+  }, []);
+  return wide;
+}
+
 /**
- * @param {(w:number)=>number} heightOf 幅から高さを決める関数
- * @param {number} maxW 最大幅 [CSS px]
+ * @param {(w:number)=>number} heightOf 幅から高さを決める関数（通常時）
+ * @param {number} maxW 最大幅 [CSS px]（通常時）
+ * @param {null|{aspect?:number}} fit 1画面レイアウトで親の箱に合わせるか（aspect = 幅/高さ を保つ）
  */
-export function useCanvas(heightOf, maxW = 720) {
+export function useCanvas(heightOf, maxW = 720, fit = null) {
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
-  const [width, setWidth] = useState(0);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  const wide = useIsWide();
+  const fitting = !!fit && wide;
+  const aspect = fit?.aspect ?? null;
 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return undefined;
-    const update = (w) => setWidth(Math.max(220, Math.floor(Math.min(maxW, w))));
-    update(el.clientWidth);
-    const ro = new ResizeObserver((entries) => update(entries[0].contentRect.width));
+    const update = () => {
+      const w = Math.floor(el.clientWidth);
+      const h = Math.floor(el.clientHeight);
+      setBox((b) => (b.w === w && b.h === h ? b : { w, h }));
+    };
+    update();
+    const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [maxW]);
+  }, []);
 
-  const height = width ? Math.round(heightOf(width)) : 0;
+  let width = 0;
+  let height = 0;
+  if (box.w > 0) {
+    if (fitting && box.h > 40) {
+      if (aspect) {
+        width = Math.floor(Math.min(box.w, box.h * aspect));
+        height = Math.floor(width / aspect);
+      } else {
+        width = box.w;
+        height = box.h;
+      }
+    } else {
+      width = Math.max(220, Math.floor(Math.min(maxW, box.w)));
+      height = Math.round(heightOf(width));
+    }
+  }
 
   /** 論理座標（CSS px）で描ける 2D コンテキストを返す */
   const getCtx = useCallback(() => {
     const c = canvasRef.current;
-    if (!c || !width) return null;
+    if (!c || !width || !height) return null;
     const dpr = window.devicePixelRatio || 1;
     const pw = Math.round(width * dpr);
     const ph = Math.round(height * dpr);
@@ -42,7 +81,11 @@ export function useCanvas(heightOf, maxW = 720) {
     return ctx;
   }, [width, height]);
 
-  return { wrapRef, canvasRef, width, height, getCtx };
+  /** 親要素・canvas に付けるクラス（fit 時は canvas を親の中央に絶対配置） */
+  const wrapClass = fitting ? 'relative flex-1 min-h-0 w-full' : 'w-full flex justify-center';
+  const canvasClass = fitting ? 'absolute inset-0 m-auto' : '';
+
+  return { wrapRef, canvasRef, width, height, getCtx, fitting, wrapClass, canvasClass };
 }
 
 /** Canvas 用の矢印 */
