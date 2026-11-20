@@ -4,6 +4,7 @@
 //   操作：加熱する／冷却する／押し込む／引き出す
 //   PC では画面下に横長に置き、図を見ながら操作できるようにする
 // ====================================================
+import { useState } from 'react';
 import { PISTON_MODES, ENV_MODES, OPERATIONS, FAMILIES, PROCESS_INFO, LINE_PROCESSES } from '../physics/model.js';
 
 function Seg({ options, value, onChange }) {
@@ -163,6 +164,117 @@ export default function OperationBar({
         </p>
         {status}
       </div>
+    </div>
+  );
+}
+
+// ====================================================
+// スマホ用の操作バー（画面の下に固定）
+//   1行目：直近の結果・直線操作・戻す・やり直し
+//   2行目：ピストン｜容器
+//   3行目：4つの操作ボタン
+//   4行目：押せない理由など
+// ====================================================
+function TinySeg({ options, value, onChange, className = '' }) {
+  return (
+    <div className={`flex rounded-lg border border-slate-600 overflow-hidden ${className}`} role="group">
+      {options.map((m, i) => {
+        const active = value === m.id;
+        return (
+          <button
+            key={m.id}
+            type="button"
+            aria-pressed={active}
+            aria-label={m.label}
+            onClick={() => onChange(m.id)}
+            className={`flex-1 px-1 py-2 text-sm whitespace-nowrap ${i ? 'border-l border-slate-600' : ''}
+              ${active ? 'bg-sky-600 text-white font-semibold' : 'bg-slate-800 text-slate-300'}`}
+          >
+            <span className="mr-0.5">{m.icon}</span>{m.tiny}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function CompactControls({
+  setup, onSetup, check, onOperate, showCaptions = true,
+  lineOps = null, onUndo = null, canUndo = false, onReset = null,
+  message = null, status = null,
+}) {
+  const [lineOpen, setLineOpen] = useState(false);
+  const pistonInfo = PISTON_MODES.find((m) => m.id === setup.piston);
+  const envInfo = ENV_MODES.find((m) => m.id === setup.env);
+  const results = Object.keys(OPERATIONS).map((op) => ({ op, ...check(op) }));
+  const reasons = [...new Set(results.filter((r) => r.reason).map((r) => r.reason))];
+  const iconBtn = 'shrink-0 rounded-lg border px-2.5 py-1.5 text-sm leading-none';
+
+  return (
+    <div className="space-y-1.5 px-2 pt-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] bg-slate-900">
+      <div className="flex items-center gap-1.5">
+        <div className="flex-1 min-w-0 text-xs">{status}</div>
+        {lineOps && (
+          <button type="button" onClick={() => setLineOpen((v) => !v)} aria-expanded={lineOpen}
+            className={`${iconBtn} ${lineOpen ? 'bg-amber-700/60 border-amber-400 text-white' : 'bg-amber-900/30 border-amber-500/50 text-amber-100'}`}
+            title="PV図上を直線で動かす">⤢</button>
+        )}
+        {onUndo && (
+          <button type="button" onClick={onUndo} disabled={!canUndo} aria-label="1つ戻す"
+            className={`${iconBtn} bg-slate-800 border-slate-600 text-slate-200 disabled:opacity-40`}>↩</button>
+        )}
+        {onReset && (
+          <button type="button" onClick={onReset} aria-label="はじめから"
+            className={`${iconBtn} bg-rose-900/40 border-rose-600/50 text-rose-100`}>⟲</button>
+        )}
+      </div>
+
+      {lineOps && lineOpen && (
+        <div className="grid grid-cols-4 gap-1.5">
+          {LINE_PROCESSES.map((id) => {
+            const r = lineOps.check(id);
+            return (
+              <button key={id} type="button" disabled={!!r} aria-label={PROCESS_INFO[id].name}
+                onClick={() => lineOps.onRun(id)}
+                className="rounded-lg border py-1.5 text-base bg-amber-900/30 border-amber-500/50 text-amber-100
+                  disabled:bg-slate-800/40 disabled:border-slate-700 disabled:text-slate-600">
+                {PROCESS_INFO[id].arrow}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex gap-1.5">
+        <TinySeg className="flex-[3]" options={PISTON_MODES} value={setup.piston} onChange={(v) => onSetup({ ...setup, piston: v })} />
+        <TinySeg className="flex-[2]" options={ENV_MODES} value={setup.env} onChange={(v) => onSetup({ ...setup, env: v })} />
+      </div>
+
+      <div className="grid grid-cols-4 gap-1.5">
+        {results.map(({ op, processId, reason }) => {
+          const o = OPERATIONS[op];
+          const fam = processId ? PROCESS_INFO[processId].family : null;
+          return (
+            <button key={op} type="button" disabled={!processId} aria-label={o.label} title={reason ?? o.label}
+              onClick={() => onOperate(op, processId)}
+              className={`rounded-xl border px-0.5 py-2 text-sm font-semibold leading-tight
+                ${processId ? OP_STYLE[op] : 'bg-slate-800/40 border-slate-700 text-slate-500'}`}>
+              <div className="text-lg leading-none mb-0.5">{o.icon}</div>
+              <div className="whitespace-nowrap">{OP_SHORT[op]}</div>
+              {showCaptions && (
+                <div className="text-[11px] font-normal whitespace-nowrap mt-0.5"
+                  style={{ color: fam ? FAMILIES[fam].color : 'transparent' }}>
+                  {fam ? FAMILIES[fam].name : '—'}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <p className={`text-xs leading-snug line-clamp-2 min-h-[2rem] ${message ? 'text-amber-300' : 'text-slate-400'}`}>
+        {message ?? (reasons.length ? reasons.join(' ／ ') : `${pistonInfo?.desc}。${envInfo?.desc}。`)}
+      </p>
     </div>
   );
 }

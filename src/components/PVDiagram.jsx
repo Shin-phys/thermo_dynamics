@@ -7,7 +7,7 @@
 //  - 粒子モデルの測定点
 // ====================================================
 import { useEffect, useState } from 'react';
-import { useCanvas, drawArrow } from '../hooks/useCanvas.js';
+import { useCanvas, drawArrow, useIsWide } from '../hooks/useCanvas.js';
 import { FAMILIES, GAMMA, J_PER_UNIT, T0_K, sampleSegment, sameState } from '../physics/model.js';
 
 const M = { l: 54, r: 16, t: 14, b: 46 };
@@ -40,7 +40,9 @@ export default function PVDiagram({
 }) {
   const [guides, setGuides] = useState(guidesDefault);
   const [zoom, setZoom] = useState(false);
-  const { wrapRef, canvasRef, width, height, getCtx, fitting, wrapClass, canvasClass } = useCanvas(
+  const wide = useIsWide();
+  const [showHelp, setShowHelp] = useState(false);
+  const { wrapRef, canvasRef, width, height, getCtx, wrapClass, canvasClass } = useCanvas(
     (w) => Math.min(460, Math.max(250, w * 0.7)), 760, {},
   );
 
@@ -325,16 +327,17 @@ export default function PVDiagram({
       + (zoom ? '拡大中は横軸が 0 から始まらないため、工程の下の面積は表示しません。' : '');
 
   return (
-    <div className={fitting ? 'flex flex-col h-full min-h-0' : ''}>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
-        <h2 className="text-base font-bold text-slate-100 mr-auto">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-1.5">
+        <h2 className={`font-bold text-slate-100 mr-auto ${wide ? 'text-base' : 'text-sm'}`}>
           {title}
-          <span className="ml-2 cursor-help text-sm font-normal text-slate-400" title={help}>ⓘ</span>
+          <button type="button" onClick={() => setShowHelp((v) => !v)} aria-expanded={showHelp}
+            className="ml-1.5 text-sm font-normal text-slate-400 hover:text-slate-200" title={help}>ⓘ</button>
         </h2>
         {!points && (
           <label className="flex items-center gap-1.5 cursor-pointer select-none text-sm text-slate-300">
             <input type="checkbox" checked={guides} onChange={(e) => setGuides(e.target.checked)} className="accent-sky-500 w-4 h-4" />
-            等温線・断熱線
+            {wide ? '等温線・断熱線' : '等温・断熱線'}
           </label>
         )}
         <label className="flex items-center gap-1.5 cursor-pointer select-none text-sm text-slate-300">
@@ -342,21 +345,21 @@ export default function PVDiagram({
           拡大
         </label>
       </div>
+      {showHelp && <p className="mb-1.5 text-xs text-slate-300 leading-relaxed">{help}</p>}
       <div ref={wrapRef} className={wrapClass}>
         <canvas ref={canvasRef} className={`rounded-lg ${canvasClass}`} aria-label="PV図" />
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-300">
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-300">
         {!points && Object.entries(FAMILIES).map(([k, f]) => (
           <span key={k} className={`flex items-center gap-1 ${families.has(k) ? '' : 'opacity-50'}`}>
-            <span className="inline-block w-4 h-1 rounded" style={{ background: f.color }} />{f.name}
+            <span className="inline-block w-4 h-1 rounded" style={{ background: f.color }} />{wide || k !== 'line' ? f.name : '直線'}
           </span>
         ))}
         {target && (
           <span className="flex items-center gap-1">
-            <span className="inline-block w-4 border-t-2 border-dashed border-slate-200" />目標の経路
+            <span className="inline-block w-4 border-t-2 border-dashed border-slate-200" />目標
           </span>
         )}
-        {(points || !fitting) && <span className="text-slate-400 basis-full leading-relaxed">{help}</span>}
       </div>
     </div>
   );

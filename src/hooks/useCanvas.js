@@ -5,31 +5,45 @@
 // ====================================================
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const WIDE_QUERY = '(min-width: 1024px)';
-
-/** PC 向けの1画面レイアウトかどうか */
-export function useIsWide() {
-  const [wide, setWide] = useState(() => window.matchMedia(WIDE_QUERY).matches);
+/** メディアクエリが当てはまるか */
+export function useMedia(query) {
+  const [hit, setHit] = useState(() => window.matchMedia(query).matches);
   useEffect(() => {
-    const m = window.matchMedia(WIDE_QUERY);
-    const f = () => setWide(m.matches);
+    const m = window.matchMedia(query);
+    const f = () => setHit(m.matches);
+    f();
     m.addEventListener('change', f);
     return () => m.removeEventListener('change', f);
-  }, []);
-  return wide;
+  }, [query]);
+  return hit;
+}
+
+/** PC 向け（幅 1024px 以上）かどうか */
+export const useIsWide = () => useMedia('(min-width: 1024px)');
+
+/**
+ * 画面の使い方
+ *  wide      : PC（幅 1024px 以上）… 装置・PV図・右パネルを並べる
+ *  landscape : スマホ横向き（高さが低い）… 左に図、右に操作
+ *  compact   : スマホ縦向き・タブレット縦向き … 上に図（タブ切り替え）、下に操作
+ */
+export function useLayoutMode() {
+  const wide = useIsWide();
+  const landscape = useMedia('(max-height: 520px) and (orientation: landscape)');
+  if (wide && !landscape) return 'wide';
+  return landscape ? 'landscape' : 'compact';
 }
 
 /**
  * @param {(w:number)=>number} heightOf 幅から高さを決める関数（通常時）
  * @param {number} maxW 最大幅 [CSS px]（通常時）
- * @param {null|{aspect?:number}} fit 1画面レイアウトで親の箱に合わせるか（aspect = 幅/高さ を保つ）
+ * @param {null|{aspect?:number}} fit 親の箱（幅・高さ）に収めるか（aspect = 幅/高さ を保つ）
  */
 export function useCanvas(heightOf, maxW = 720, fit = null) {
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
-  const wide = useIsWide();
-  const fitting = !!fit && wide;
+  const fitting = !!fit;
   const aspect = fit?.aspect ?? null;
 
   useEffect(() => {
@@ -49,8 +63,10 @@ export function useCanvas(heightOf, maxW = 720, fit = null) {
   let width = 0;
   let height = 0;
   if (box.w > 0) {
-    if (fitting && box.h > 40) {
-      if (aspect) {
+    if (fitting) {
+      if (box.h < 20) {
+        // まだ高さが決まっていない（描かない）
+      } else if (aspect) {
         width = Math.floor(Math.min(box.w, box.h * aspect));
         height = Math.floor(width / aspect);
       } else {

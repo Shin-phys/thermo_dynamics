@@ -1,16 +1,15 @@
 // ====================================================
 // 粒子モデル（2次元の分子シミュレーション）の画面
-//   App の格子（1画面レイアウト）にそのまま並ぶ 4 つの要素を返す
+//   配置は Workspace（PC・スマホ縦・スマホ横）に任せる
 // ====================================================
 import Apparatus from './Apparatus.jsx';
-import OperationBar from './OperationBar.jsx';
+import OperationBar, { CompactControls } from './OperationBar.jsx';
+import Workspace from './Workspace.jsx';
 import PVDiagram from './PVDiagram.jsx';
 import SpeedDistribution from './SpeedDistribution.jsx';
-import { Card, Tabs } from './Panels.jsx';
 import { useParticleSim } from '../hooks/useParticleSim.js';
 import { resolveOperation, T0_K } from '../physics/model.js';
 import { N_REF } from '../physics/particleSim.js';
-import { AREA } from '../layout.js';
 
 const fmt = (v, d = 1) => `${v > 0.05 ? '+' : v < -0.05 ? '−' : ''}${Math.abs(v).toFixed(d)}`;
 
@@ -84,6 +83,7 @@ export default function ParticleView({ active }) {
     label: '測定値・収支',
     content: (
       <>
+        <div className="lg:hidden">{nControls}</div>
         <div>
           <h3 className="text-sm font-semibold text-slate-300 mb-1">測った状態量</h3>
           <Row label="圧力（衝突から測定）" value={stats.P.toFixed(2)} unit="×10⁵ Pa" color="text-rose-300" />
@@ -140,37 +140,20 @@ export default function ParticleView({ active }) {
     ),
   };
 
+  const common = { setup, onSetup, check, onOperate, status };
+
   return (
-    <>
-      <Card title="装置（分子 1 個 1 個を計算）" className={AREA.apparatus}>
-        <Apparatus sim={sim} />
-      </Card>
-
-      <Card className={AREA.controls}>
-        <OperationBar
-          setup={setup}
-          onSetup={onSetup}
-          check={check}
-          onOperate={onOperate}
-          extra={nControls}
-          status={status}
-        />
-      </Card>
-
-      <Card className={AREA.graph}>
+    <Workspace
+      apparatusTitle="装置（分子 1 個 1 個を計算）"
+      apparatus={<Apparatus sim={sim} />}
+      graph={(
         <PVDiagram title="PV図（衝突から測った圧力）" points={stats.trace} current={{ V: stats.V, P: stats.P }}
           isoScale={stats.N / N_REF} showArea={false} />
-      </Card>
-
-      <Card className={AREA.side}>
-        <div className="mb-3">
-          <h2 className="text-base font-bold text-slate-100 mb-2">分子の速さの分布（実測）</h2>
-          <SpeedDistribution T={stats.T} hist={stats.hist} compact />
-        </div>
-        <div className="flex-1 min-h-0">
-          <Tabs tabs={[measureTab, observeTab]} />
-        </div>
-      </Card>
-    </>
+      )}
+      controls={<OperationBar {...common} extra={nControls} />}
+      compactControls={<CompactControls {...common} onReset={() => { sim.reset(stats.N); refresh(); }} />}
+      pinned={{ title: '速さの分布（実測）', content: <SpeedDistribution T={stats.T} hist={stats.hist} compact /> }}
+      panels={[measureTab, observeTab]}
+    />
   );
 }

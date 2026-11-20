@@ -36,18 +36,18 @@ export const internalEnergy = (s) => 1.5 * s.P * s.V; // U = (3/2)nRT（相対�
 // 装置の設定
 // ----------------------------------------------------
 export const PISTON_MODES = [
-  { id: 'fixed', label: 'ピストンを固定', short: '固定', icon: '🔒',
+  { id: 'fixed', label: 'ピストンを固定', short: '固定', tiny: '固定', icon: '🔒',
     desc: 'ストッパーで止めて、体積が変わらないようにする' },
-  { id: 'hand', label: 'ピストンを手で動かす', short: '手で動かす', icon: '✋',
+  { id: 'hand', label: 'ピストンを手で動かす', short: '手で動かす', tiny: '手で', icon: '✋',
     desc: '手でゆっくり押し込んだり引き出したりする' },
-  { id: 'free', label: 'ピストンを自由にする', short: '自由に動く', icon: '⚖️',
+  { id: 'free', label: 'ピストンを自由にする', short: '自由に動く', tiny: '自由', icon: '⚖️',
     desc: 'おもりをのせて自由に動けるようにする。外圧とつり合う位置で止まる' },
 ];
 
 export const ENV_MODES = [
-  { id: 'insulated', label: '断熱材で包む', short: '断熱材', icon: '🧱',
+  { id: 'insulated', label: '断熱材で包む', short: '断熱材', tiny: '断熱', icon: '🧱',
     desc: '熱は中のヒーター（冷却器）からしか出入りしない' },
-  { id: 'bath', label: '恒温槽に入れる', short: '恒温槽', icon: '🛁',
+  { id: 'bath', label: '恒温槽に入れる', short: '恒温槽', tiny: '恒温', icon: '🛁',
     desc: '槽との間で熱が自由に出入りし、温度が一定に保たれる' },
 ];
 
