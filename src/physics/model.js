@@ -41,7 +41,7 @@ export const PISTON_MODES = [
   { id: 'hand', label: 'ピストンを手で動かす', short: '手で動かす', tiny: '手で', icon: '✋',
     desc: '手でゆっくり押し込んだり引き出したりする' },
   { id: 'free', label: 'ピストンを自由にする', short: '自由に動く', tiny: '自由', icon: '⚖️',
-    desc: 'おもりをのせて自由に動けるようにする。外圧とつり合う位置で止まる' },
+    desc: 'いまの気体の圧力とつり合うおもりをのせて、手を離す。以後、外圧はその値で一定' },
 ];
 
 export const ENV_MODES = [
@@ -166,7 +166,7 @@ export function resolveOperation(setup, op) {
   if (op === 'push' || op === 'pull') {
     if (piston === 'fixed') return { reason: 'ピストンが固定されているので、押し込んだり引き出したりできません。' };
     if (piston === 'free') {
-      return { reason: '自由なピストンは外圧とつり合う位置まで自分で動きます。手ではなく、加熱・冷却で動かしましょう。' };
+      return { reason: '自由なピストンはおもり（外圧）とつり合っているので、手では動かせません。加熱・冷却で動かしましょう。' };
     }
     if (env === 'bath') return { processId: op === 'push' ? P.ISOTHERMAL_COMPRESS : P.ISOTHERMAL_EXPAND };
     return { processId: op === 'push' ? P.ADIABATIC_COMPRESS : P.ADIABATIC_EXPAND };
