@@ -247,19 +247,24 @@ export default function Apparatus({ V = 1, T = 1, piston, env, event = null, sim
           else drawArrow(ctx, ax, yTop - 22, ax, yTop - 60, '#e2e8f0', 3, 9);
         }
       } else {
-        // おもり（外圧一定）
+        // おもり：自由にした時点の気体の圧力とつり合う重さ（外圧が大きいほど高く描く）
+        const Pext = s ? ParticleSim.toPrel(s.Pext) : pr.T / pr.V;
+        const wh = Math.max(14, Math.min(44, 10 + 10 * Pext));
+        const wy = yTop - PISTON_T - wh;
         ctx.fillStyle = '#475569';
-        ctx.fillRect(cx - 36, yTop - PISTON_T - 26, 72, 26);
+        ctx.fillRect(cx - 36, wy, 72, wh);
         ctx.strokeStyle = '#94a3b8';
         ctx.lineWidth = 1;
-        ctx.strokeRect(cx - 36, yTop - PISTON_T - 26, 72, 26);
+        ctx.strokeRect(cx - 36, wy, 72, wh);
         ctx.fillStyle = '#e2e8f0';
         ctx.font = '12px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('おもり', cx, yTop - PISTON_T - 9);
+        ctx.textBaseline = 'middle';
+        ctx.fillText('おもり', cx, wy + wh / 2);
+        ctx.textBaseline = 'alphabetic';
         ctx.fillStyle = '#cbd5e1';
         ctx.font = '11px sans-serif';
-        ctx.fillText('自由に動く（外圧一定）', cx, yTop - PISTON_T - 32);
+        ctx.fillText(`外圧 ${Pext.toFixed(2)}×10⁵ Pa（一定）`, cx, wy - 6);
       }
 
       // --- 状態の文字 ---
